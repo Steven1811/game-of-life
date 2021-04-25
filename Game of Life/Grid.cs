@@ -46,9 +46,10 @@ namespace Game_of_Life
             this.MouseMap.Add(Mouse.Button.Left, 1);
             this.MouseMap.Add(Mouse.Button.Right, 0);
 
-            // Add window mouse Handlers
+            // Add window Handlers
             this.Window.MouseButtonPressed += this.OnMouseButtonPressed;
             this.Window.MouseButtonReleased += this.OnMouseButtonReleased;
+            this.Window.Resized += this.OnWindowResized;
 
             // Create VertexArray
             uint quadVerticesCount = gridWidth * gridHeight * 4;
@@ -56,6 +57,9 @@ namespace Game_of_Life
 
             // Fill the grid with dead cells first
             this.FillGrid(0);
+
+            // Center in Window
+            this.CenterInWindow();
         }
 
         
@@ -75,10 +79,18 @@ namespace Game_of_Life
             
         }
 
+        protected void OnWindowResized(object sender, SizeEventArgs args)
+        {
+            if (sender is RenderWindow)
+            {
+                this.CenterInWindow();
+            }
+        }
+
         public void SetCellByWorldCoordinates(float x, float y, uint value)
         {
-            uint selectedCellX = (uint)((x - this.Position.X) / (this.CellWidth * this.Scale.X));
-            uint selectedCellY = (uint)((y- this.Position.Y) / (this.CellHeight * this.Scale.Y));
+            int selectedCellX = (int)((x - this.Position.X + this.Origin.X) / (this.CellWidth * this.Scale.X));
+            int selectedCellY = (int)((y - this.Position.Y + this.Origin.Y) / (this.CellHeight * this.Scale.Y));
             this.SetCell(selectedCellX, selectedCellY, value);
         }
 
@@ -112,45 +124,83 @@ namespace Game_of_Life
 
         public void FillGrid(uint value)
         {
-            for (uint y = 0; y < this.GridHeight; y++)
+            for (int y = 0; y < this.GridHeight; y++)
             {
-                for (uint x = 0; x < this.GridWidth; x++)
+                for (int x = 0; x < this.GridWidth; x++)
                 {
                     this.SetCell(x, y, value);
                 }
             }
         }
 
-        public void SetCell(uint x, uint y, uint value)
+        public Vector2u MapToRealCell(int x, int y)
         {
-            this.map[x, y] = value;
+            x = (int)(x % this.GridWidth);
+            y = (int)(y % this.GridHeight);
+
+            Vector2u result = new Vector2u((uint)x, (uint) y);
+
+            if (x < 0)
+            {
+                result.X = (uint)(this.GridWidth + x);
+            }
+
+            if (y < 0)
+            {
+                result.Y = (uint)(this.GridHeight + y);
+            }
+
+            
+            return result;
+        }
+
+        public void SetCell(int x, int y, uint value)
+        {
+            Vector2u realCoords = new Vector2u((uint)x, (uint)y);
+
+            // Do mapping if required
+            if (x > this.GridWidth - 1 || y > this.GridHeight - 1 || x < 0 || y < 0)
+            {
+                realCoords = this.MapToRealCell(x, y);
+            }
+
+            this.map[realCoords.X, realCoords.Y] = value;
 
             // Update Vertex array
-            this.vertices[((x + y * this.GridWidth) * 4) + 0] = new Vertex(new Vector2f((x * this.CellWidth) + this.LineWidth, (y * this.CellHeight) + this.LineWidth), this.ColorMap[value]);
-            this.vertices[((x + y * this.GridWidth) * 4) + 1] = new Vertex(new Vector2f((x * this.CellWidth) + this.CellWidth, (y * this.CellHeight) + this.LineWidth), this.ColorMap[value]);
-            this.vertices[((x + y * this.GridWidth) * 4) + 2] = new Vertex(new Vector2f((x * this.CellWidth) + this.CellWidth, (y * this.CellHeight) + this.CellHeight), this.ColorMap[value]);
-            this.vertices[((x + y * this.GridWidth) * 4) + 3] = new Vertex(new Vector2f((x * this.CellWidth) + this.LineWidth, (y * this.CellHeight) + this.CellHeight), this.ColorMap[value]);
+            this.vertices[((realCoords.X + realCoords.Y * this.GridWidth) * 4) + 0] = new Vertex(new Vector2f((realCoords.X * this.CellWidth) + this.LineWidth, (realCoords.Y * this.CellHeight) + this.LineWidth), this.ColorMap[value]);
+            this.vertices[((realCoords.X + realCoords.Y * this.GridWidth) * 4) + 1] = new Vertex(new Vector2f((realCoords.X * this.CellWidth) + this.CellWidth, (realCoords.Y * this.CellHeight) + this.LineWidth), this.ColorMap[value]);
+            this.vertices[((realCoords.X + realCoords.Y * this.GridWidth) * 4) + 2] = new Vertex(new Vector2f((realCoords.X * this.CellWidth) + this.CellWidth, (realCoords.Y * this.CellHeight) + this.CellHeight), this.ColorMap[value]);
+            this.vertices[((realCoords.X + realCoords.Y * this.GridWidth) * 4) + 3] = new Vertex(new Vector2f((realCoords.X * this.CellWidth) + this.LineWidth, (realCoords.Y * this.CellHeight) + this.CellHeight), this.ColorMap[value]);
         }
 
         public void Rebuild()
         {
-            for (uint x = 0; x < this.map.GetLength(0); x++)
+            for (int x = 0; x < this.map.GetLength(0); x++)
             {
-                for (uint y = 0; y < this.map.GetLength(1); y++)
+                for (int y = 0; y < this.map.GetLength(1); y++)
                 {
                     this.SetCell(x, y, this.map[x, y]);
                 }
             }
         }
 
-        public uint GetCell(uint x, uint y)
+        public uint GetCell(int x, int y)
         {
-            return this.map[x, y];
+            Vector2u realCoords = new Vector2u((uint)x, (uint)y);
+
+            // Do mapping if required
+            if (x > this.GridWidth - 1 || y > this.GridHeight - 1 || x < 0 || y < 0)
+            {
+                realCoords = this.MapToRealCell(x, y);
+            }
+
+            return this.map[realCoords.X, realCoords.Y];
         }
 
-        public static void LoadFromFile()
+        public void CenterInWindow()
         {
-
+            this.Origin = new Vector2f(this.GetGlobalBounds().Width / 2, this.GetGlobalBounds().Height / 2);
+            this.Position = new Vector2f((this.Window.Size.X / 2), this.Window.Size.Y / 2);
         }
 
         public virtual void Draw(RenderTarget target, RenderStates states)
