@@ -12,18 +12,22 @@ namespace Game_of_Life
         protected Thread renderThread;
         protected Font font;
         protected Grid grid;
+        protected Text fpsText;
+        protected Text gameCaptionText;
 
         // Main render thread
         protected void doRender()
         {
             this.window.SetActive(true);
 
-            Text text = new Text("Game of Life", this.font, 96);
-            text.FillColor = Color.Magenta;
+            this.gameCaptionText = new Text("Game of Life\nBy Steven & Lion", this.font, 48);
+            this.gameCaptionText.FillColor = Color.Yellow;
             // text.Position = new Vector2f(200f, 200f);
 
-            Text fpsText = new Text("FPS: ", this.font, 48);
-            fpsText.FillColor = Color.Yellow;
+            this.fpsText = new Text("FPS: ", this.font, 48);
+            this.AlignFpsText();
+
+            this.fpsText.FillColor = Color.Yellow;
             int frameCount = 0;
             Clock clock = new Clock();
 
@@ -35,19 +39,26 @@ namespace Game_of_Life
 
                 // Draw calls, the less the better (; We probably need some shape/sprite batch processing here
                 this.window.Draw(this.grid);
-                this.window.Draw(text);
-                this.window.Draw(fpsText);
+                this.window.Draw(this.gameCaptionText);
+                this.window.Draw(this.fpsText);
                 this.window.Display();
 
                 // Simple FPS Counter
                 frameCount++;
                 if (clock.ElapsedTime.AsMilliseconds() > 1000)
                 {
-                    fpsText.DisplayedString = String.Format("FPS: {0}", frameCount);
+                    this.fpsText.DisplayedString = String.Format("FPS: {0}", frameCount);
+                    this.AlignFpsText();
                     frameCount = 0;
                     clock.Restart();
                 }
             }
+        }
+
+        protected void AlignFpsText()
+        {
+            this.fpsText.Origin = new Vector2f(fpsText.GetGlobalBounds().Width, 0);
+            this.fpsText.Position = new Vector2f(this.window.Size.X, 0);
         }
 
         // EventHandler for Window Closed Events
@@ -63,12 +74,13 @@ namespace Game_of_Life
         // EventHandler for Window Resized Events. In/Decreases Viewport size.
         protected void OnWindowResized(object sender, SizeEventArgs args)
         {
-            
             if (sender is RenderWindow)
             {
                 RenderWindow window = sender as RenderWindow;
                 FloatRect visibleArea = new FloatRect(0f, 0f, args.Width, args.Height);
                 window.SetView(new View(visibleArea));
+
+                this.AlignFpsText();
             }
         }
 
@@ -78,18 +90,17 @@ namespace Game_of_Life
             // Load Arcade game font
             this.font = new Font("assets/fonts/ARCADE.TTF");
 
-
+            // Setup Window
             this.window = new RenderWindow(new VideoMode(800, 600), "Game of Life");
 
             // Setup grid
-            this.grid = new Grid(this.window, 120, 160);
-            // this.grid.Position = new Vector2f(200f, 200f);
-            // this.grid.Scale = new Vector2f(1.5f, 1.5f);
+            this.grid = new Grid(this.window, 12, 16);
 
             // Set Window Events
             this.window.Closed += OnWindowClosed;
             this.window.Resized += OnWindowResized;
             this.window.KeyPressed += OnKeyPressed;
+
             // Set Window Config
             // this.window.SetFramerateLimit(60);
             this.window.SetActive(false);
@@ -106,21 +117,22 @@ namespace Game_of_Life
                 this.grid.ColorMap[1] = Color.Magenta;
                 this.grid.Rebuild();
             }
+            else if (args.Code == Keyboard.Key.F2)
+            {
+                Console.WriteLine(this.grid.GetCell(-2, -2));
+                Console.WriteLine(this.grid.GetCell(17, 17));
+            }
         }
-
-
 
         // Starts the game
         public int Start()
         {
             this.renderThread.Start();
-            
 
             // Poll window events. This must happen in the main thread.
             while (this.window.IsOpen)
             {
                 this.window.DispatchEvents();
-                // System.Console.WriteLine(Mouse.GetPosition(this.window));
             }
             return 0;
         }
