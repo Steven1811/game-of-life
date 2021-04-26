@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Threading;
+using System.IO;
+using Newtonsoft.Json;
+
 using SFML.Window;
 using SFML.Graphics;
 using SFML.System;
@@ -109,18 +112,42 @@ namespace Game_of_Life
             this.renderThread = new Thread(new ThreadStart(this.doRender));
         }
 
+        public void LoadGridFromFile(string filePath)
+        {
+            string serialized = File.ReadAllText(filePath);
+            Grid newGrid = new Grid(this.window);
+            JsonConvert.PopulateObject(serialized, newGrid);
+            newGrid.Rebuild();
+            this.grid = newGrid;
+            this.grid.CenterInWindow();
+        }
+
+        public void SaveGridToFile(string filePath)
+        {
+            string serialized = JsonConvert.SerializeObject(this.grid, Formatting.Indented);
+            File.WriteAllText(filePath, serialized);
+        }
+
         private void OnKeyPressed(object sender, KeyEventArgs args)
         {
-            if (args.Code == Keyboard.Key.F1)
+
+            switch(args.Code)
             {
-                this.grid.ColorMap[0] = Color.Yellow;
-                this.grid.ColorMap[1] = Color.Magenta;
-                this.grid.Rebuild();
-            }
-            else if (args.Code == Keyboard.Key.F2)
-            {
-                Console.WriteLine(this.grid.GetCell(-2, -2));
-                Console.WriteLine(this.grid.GetCell(17, 17));
+                case Keyboard.Key.F1:
+                    this.grid.ColorMap[0] = Color.Yellow;
+                    this.grid.ColorMap[1] = Color.Magenta;
+                    this.grid.Rebuild();
+                    break;
+                case Keyboard.Key.F2:
+                    Console.WriteLine(this.grid.GetCell(-2, -2));
+                    Console.WriteLine(this.grid.GetCell(17, 17));
+                    break;
+                case Keyboard.Key.F3:
+                    this.LoadGridFromFile("saves/save1.json");
+                    break;
+                case Keyboard.Key.F4:
+                    this.SaveGridToFile("saves/save1.json");
+                    break;
             }
         }
 
