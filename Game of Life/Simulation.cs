@@ -10,7 +10,7 @@ namespace Game_of_Life
     {
 
         protected Thread simulationThread;
-        protected Grid grid;
+        protected Grid Grid { get; set; }
 
         protected int Speed { get; set; }
         protected int OverpopulationMark{ get; set; }
@@ -24,7 +24,7 @@ namespace Game_of_Life
 
         public Simulation(Grid grid)
         {
-            this.grid = grid;
+            this.Grid = grid;
             this.simulationThread = new Thread(new ThreadStart(this.doSimultaion));
             Speed = 1;
             OverpopulationMark = 3;
@@ -40,12 +40,12 @@ namespace Game_of_Life
             }
         }
 
-        private Grid Step(Grid currentGrid)
+        private void Step()
         {
             // Loop through every cell 
-            for (int row = 0; row < currentGrid.GridHeight - 1; row++)
+            for (int row = 0; row < Grid.GridHeight - 1; row++)
             {
-                for (int column = 0; column < currentGrid.GridWidth - 1; column++)
+                for (int column = 0; column < Grid.GridWidth - 1; column++)
                 {
                     // find your alive neighbors
                     int aliveNeighbors = 0;
@@ -53,11 +53,11 @@ namespace Game_of_Life
                     {
                         for (int j = -1; j <= 1; j++)
                         {
-                            aliveNeighbors += currentGrid.GetCell(row + i, column + j) == 1 ? 1 : 0;
+                            aliveNeighbors += Grid.GetCell(row + i, column + j) == 1 ? 1 : 0;
                         }
                     }
 
-                    uint currentCell = currentGrid.GetCell(row, column);
+                    uint currentCell = Grid.GetCell(row, column);
 
                     // The cell needs to be subtracted 
                     // from its neighbors as it was  
@@ -69,29 +69,25 @@ namespace Game_of_Life
                     // Cell is lonely and dies 
                     if (currentCell == 1 && aliveNeighbors < StarvingMark)
                     {
-                        currentGrid.SetCell(row, column, 0);
+                        Grid.SetCell(row, column, 0);
                     }
 
                     // Cell dies due to over population 
                     else if (currentCell == 1 && aliveNeighbors > OverpopulationMark)
                     {
-                        currentGrid.SetCell(row, column, 0);
+                        Grid.SetCell(row, column, 0);
                     }
 
                     // A new cell is born 
                     else if (currentCell == 0 && aliveNeighbors == 3)
                     {
-                        currentGrid.SetCell(row, column, 1);
+                        Grid.SetCell(row, column, 1);
                     }
 
                     //Continue if 2 or 3
                 }
             }
 
-            return currentGrid;               
-            //return nextGeneration;
         }
-
-
     }
 }
