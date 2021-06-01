@@ -14,7 +14,8 @@ namespace Game_of_Life
         protected VertexArray vertices;
         
         [JsonProperty]
-        public uint[,] map { get; set; }
+        public uint[,] Map { get; set; }
+
         protected Dictionary<Mouse.Button, uint> MouseMap { get; set; }
 
         [JsonProperty]
@@ -57,12 +58,14 @@ namespace Game_of_Life
             this.LineWidth = lineWidth;
 
             // Initialize Map
-            this.map = new uint[this.GridWidth, this.GridHeight];
+            this.Map = new uint[this.GridWidth, this.GridHeight];
 
             // Initialize Colormap
             this.ColorMap = new Dictionary<uint, Color>();
             this.ColorMap.Add(0, Color.Black);
             this.ColorMap.Add(1, Color.Green);
+            this.ColorMap.Add(2, Color.Black);
+            this.ColorMap.Add(3, Color.Green);
 
             // Initialize MouseMap
             this.MouseMap = new Dictionary<Mouse.Button, uint>();
@@ -180,7 +183,7 @@ namespace Game_of_Life
                 realCoords = this.MapToRealCell(x, y);
             }
 
-            this.map[realCoords.X, realCoords.Y] = value;
+            this.Map[realCoords.X, realCoords.Y] = value;
 
             // Update Vertex array
             this.vertices[((realCoords.X + realCoords.Y * this.GridWidth) * 4) + 0] = new Vertex(new Vector2f((realCoords.X * this.CellWidth) + this.LineWidth, (realCoords.Y * this.CellHeight) + this.LineWidth), this.ColorMap[value]);
@@ -195,11 +198,11 @@ namespace Game_of_Life
             uint quadVerticesCount = this.GridWidth * this.GridHeight * 4;
             this.vertices = new VertexArray(PrimitiveType.Quads, quadVerticesCount);
 
-            for (int x = 0; x < this.map.GetLength(0); x++)
+            for (int x = 0; x < this.Map.GetLength(0); x++)
             {
-                for (int y = 0; y < this.map.GetLength(1); y++)
+                for (int y = 0; y < this.Map.GetLength(1); y++)
                 {
-                    this.SetCell(x, y, this.map[x, y]);
+                    this.SetCell(x, y, this.Map[x, y]);
                 }
             }
         }
@@ -210,12 +213,12 @@ namespace Game_of_Life
             uint quadVerticesCount = this.GridWidth * this.GridHeight * 4;
             this.vertices = new VertexArray(PrimitiveType.Quads, quadVerticesCount);
 
-            for (int x = 0; x < this.map.GetLength(0); x++)
+            for (int x = 0; x < this.Map.GetLength(0); x++)
             {
-                for (int y = 0; y < this.map.GetLength(1); y++)
+                for (int y = 0; y < this.Map.GetLength(1); y++)
                 {
-                    this.map[x, y] = 0;
-                    this.SetCell(x, y, this.map[x, y]);
+                    this.Map[x, y] = 0;
+                    this.SetCell(x, y, this.Map[x, y]);
                 }
             }
         }
@@ -230,7 +233,7 @@ namespace Game_of_Life
                 realCoords = this.MapToRealCell(x, y);
             }
 
-            return this.map[realCoords.X, realCoords.Y];
+            return this.Map[realCoords.X, realCoords.Y];
         }
 
         public void CenterInWindow()

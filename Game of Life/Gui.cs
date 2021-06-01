@@ -56,11 +56,6 @@ namespace Game_of_Life
             this.BuildGui();
         }
 
-        private void Gui_MouseEntered(object sender, EventArgs e)
-        {
-            Console.WriteLine(string.Format("Entered {0}", sender));
-        }
-
         private void BuildGui()
         {
             // Bottom panel
@@ -123,7 +118,7 @@ namespace Game_of_Life
             this.gui.Add(this.aboutMessageBox, "AboutUsMessageBox");
 
             // Help Message Box
-            this.helpMessageBox = new MessageBox("Help", "Here will be the help Text.", new string[] { "Close" });
+            this.helpMessageBox = new MessageBox("Help", "▪ Hold the left mouse button to draw alive cells.\n▪ Hold the right mouse button to erase alive cells (Mark them as dead).\n▪ Hold the center mouse button and move the mouse to move the view.\n▪ Scroll the mouse wheel to zoom in/out.\n▪ WARNING: When setting the speed slider to 10 the simulation thread will not sleep and run at full speed.\n▪ Press F3 to create a quick save.\n▪ Press F4 to quick load.", new string[] { "Close" });
             this.helpMessageBox.PositionLayout = new Layout2d("50% - (width / 2)", "50% - (height / 2)");
             this.helpMessageBox.Visible = false;
             this.helpMessageBox.Enabled = false;
@@ -186,6 +181,11 @@ namespace Game_of_Life
         private void OnSpeedSliderValueChanged(object sender, SignalArgsFloat args)
         {
             this.speedLabel.Text = String.Format("Speed: {0}", args.Value);
+
+            if (this.SpeedChanged != null)
+            {
+                this.SpeedChanged(this, args);
+            }
         }
 
         private void OnAboutMessageBoxButtonPressed(object sender, SignalArgsString args)
@@ -273,19 +273,12 @@ namespace Game_of_Life
 
         public void Draw()
         {
-            Vector2i mousePos = Mouse.GetPosition(this.window);
-            Widget widget = this.gui.GetWidgetBelowMouseCursor(mousePos.X, mousePos.Y);
-            if (widget != null)
-            {
-                Console.WriteLine(string.Format("Widget: {0}", widget));
-                
-            }
             this.gui.Draw();
         }
 
         public event EventHandler<EventArgs> RunClicked;
         public event EventHandler<EventArgs> StepClicked;
-        public event EventHandler<EventArgs> SpeedChanged;
+        public event EventHandler<SignalArgsFloat> SpeedChanged;
         public event EventHandler<EventArgs> NewProjectStarted;
         public event EventHandler<EventArgs> ProjectLoaded;
         public event EventHandler<EventArgs> ProjectSaved;

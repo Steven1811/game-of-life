@@ -19,6 +19,8 @@ namespace Game_of_Life
         protected Text fpsText;
         protected Text gameCaptionText;
         protected Gui gui;
+        protected Simulation simulation;
+
         protected float zoomFactor = 1.0f;
         protected float mouseDeltaX = 0.0f;
         protected float mouseDeltaY = 0.0f;
@@ -109,9 +111,14 @@ namespace Game_of_Life
             this.gui.ControlDisabled += GuiControlDisabled;
             this.gui.ViewReset += OnViewReset;
             this.gui.GridClearClicked += OnGridClearClicked;
-
+            this.gui.RunClicked += OnRunClicked;
+            this.gui.StepClicked += OnStepClicked;
+            this.gui.SpeedChanged += OnSpeedChanged;
             // Setup grid
             this.grid = new Grid(this.window, 32, 32);
+
+            // Setup simulation
+            this.simulation = new Simulation(this.grid);
 
             // Set Window Events
             this.window.Closed += OnWindowClosed;
@@ -127,6 +134,38 @@ namespace Game_of_Life
             
             // Setup rendering thread
             this.renderThread = new Thread(new ThreadStart(this.doRender));
+        }
+
+        private void OnSpeedChanged(object sender, TGUI.SignalArgsFloat e)
+        {
+            if (e.Value != 10.0f)
+            {
+                this.simulation.FullSpeed = false;
+                this.simulation.SpeedDivider = e.Value;
+            }
+            else
+            {
+                this.simulation.FullSpeed = true;
+            }
+            
+            
+        }
+
+        private void OnStepClicked(object sender, EventArgs e)
+        {
+            this.simulation.Step();
+        }
+
+        private void OnRunClicked(object sender, EventArgs e)
+        {
+            if (this.simulation.ThreadRunning)
+            {
+                this.simulation.Stop();
+            }
+            else
+            {
+                this.simulation.Start();
+            }
         }
 
         private void OnGridClearClicked(object sender, EventArgs e)
@@ -208,10 +247,6 @@ namespace Game_of_Life
                 case Keyboard.Key.F1:
                     this.gui.ShowHelpMessageBox();
                     break;
-                case Keyboard.Key.F2:
-                    Console.WriteLine(this.grid.GetCell(-2, -2));
-                    Console.WriteLine(this.grid.GetCell(17, 17));
-                    break;
                 case Keyboard.Key.F3:
                     this.LoadGridFromFile("saves/save1.json");
                     break;
@@ -220,11 +255,6 @@ namespace Game_of_Life
                     break;
                 case Keyboard.Key.F12:
                     Environment.Exit(0);
-                    break;
-                case Keyboard.Key.Left:
-                    View oldView = this.window.GetView();
-                    oldView.Move(new Vector2f(-10.0f * this.zoomFactor, 0.0f));
-                    this.window.SetView(oldView);
                     break;
             }
         }
