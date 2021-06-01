@@ -1,5 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using Newtonsoft.Json;
 using SFML.Window;
 using SFML.Graphics;
 using SFML.System;
@@ -7,23 +7,46 @@ using SFML.System;
 
 namespace Game_of_Life
 {
+    [JsonObject(MemberSerialization.OptIn)]
     class Grid : Transformable, Drawable
     {
         protected Mouse.Button currentMouseButton;
         protected VertexArray vertices;
-        protected uint[,] map;
+        
+        [JsonProperty]
+        public uint[,] map { get; set; }
         protected Dictionary<Mouse.Button, uint> MouseMap { get; set; }
 
-        public Dictionary<uint, Color> ColorMap { get; }
+        [JsonProperty]
+        public Dictionary<uint, Color> ColorMap { get; set; }
         public RenderWindow Window { get; }
-        public uint GridWidth { get; }
-        public uint GridHeight { get; }
-        public float CellWidth { get; }
-        public float CellHeight { get; }
-        public float LineWidth { get; }
+        [JsonProperty]
+        public uint GridWidth { get; set; }
+        [JsonProperty]
+        public uint GridHeight { get; set; }
+        [JsonProperty]
+        public float CellWidth { get; set; }
+        [JsonProperty]
+        public float CellHeight { get; set; }
+        [JsonProperty]
+        public float LineWidth { get; set; }
 
-        
-        public Grid(RenderWindow window, uint gridWidth, uint gridHeight, float cellWidth = 16f, float cellHeight = 16f, float lineWidth = 1f)
+        public Grid(RenderWindow window)
+        {
+            // Set properties
+            this.Window = window;
+
+            // Initialize MouseMap
+            this.MouseMap = new Dictionary<Mouse.Button, uint>();
+            this.MouseMap.Add(Mouse.Button.Left, 1);
+            this.MouseMap.Add(Mouse.Button.Right, 0);
+
+            // Add window Handlers
+            this.Window.MouseButtonPressed += this.OnMouseButtonPressed;
+            this.Window.MouseButtonReleased += this.OnMouseButtonReleased;
+            this.Window.Resized += this.OnWindowResized;
+        }
+        public Grid(RenderWindow window, uint gridWidth, uint gridHeight, float cellWidth = 16f, float cellHeight = 16f, float lineWidth = 2f)
         {
             // Set properties
             this.Window = window;
@@ -34,7 +57,7 @@ namespace Game_of_Life
             this.LineWidth = lineWidth;
 
             // Initialize Map
-            this.map = new uint[gridWidth, gridHeight];
+            this.map = new uint[this.GridWidth, this.GridHeight];
 
             // Initialize Colormap
             this.ColorMap = new Dictionary<uint, Color>();
@@ -51,18 +74,12 @@ namespace Game_of_Life
             this.Window.MouseButtonReleased += this.OnMouseButtonReleased;
             this.Window.Resized += this.OnWindowResized;
 
-            // Create VertexArray
-            uint quadVerticesCount = gridWidth * gridHeight * 4;
-            this.vertices = new VertexArray(PrimitiveType.Quads, quadVerticesCount);
-
-            // Fill the grid with dead cells first
-            this.FillGrid(0);
+            // Rebuild Grid
+            this.Rebuild();
 
             // Center in Window
             this.CenterInWindow();
         }
-
-        
 
         public void OnMouseButtonPressed(object sender, MouseButtonEventArgs args)
         {
@@ -150,7 +167,6 @@ namespace Game_of_Life
                 result.Y = (uint)(this.GridHeight + y);
             }
 
-            
             return result;
         }
 
@@ -175,10 +191,30 @@ namespace Game_of_Life
 
         public void Rebuild()
         {
+            // Create VertexArray
+            uint quadVerticesCount = this.GridWidth * this.GridHeight * 4;
+            this.vertices = new VertexArray(PrimitiveType.Quads, quadVerticesCount);
+
             for (int x = 0; x < this.map.GetLength(0); x++)
             {
                 for (int y = 0; y < this.map.GetLength(1); y++)
                 {
+                    this.SetCell(x, y, this.map[x, y]);
+                }
+            }
+        }
+
+        public void Clear()
+        {
+            // Create VertexArray
+            uint quadVerticesCount = this.GridWidth * this.GridHeight * 4;
+            this.vertices = new VertexArray(PrimitiveType.Quads, quadVerticesCount);
+
+            for (int x = 0; x < this.map.GetLength(0); x++)
+            {
+                for (int y = 0; y < this.map.GetLength(1); y++)
+                {
+                    this.map[x, y] = 0;
                     this.SetCell(x, y, this.map[x, y]);
                 }
             }
@@ -201,6 +237,19 @@ namespace Game_of_Life
         {
             this.Origin = new Vector2f(this.GetGlobalBounds().Width / 2, this.GetGlobalBounds().Height / 2);
             this.Position = new Vector2f((this.Window.Size.X / 2), this.Window.Size.Y / 2);
+        }
+
+        public void DisableMouse()
+        {
+            this.Window.MouseButtonPressed -= this.OnMouseButtonPressed;
+            this.Window.MouseButtonReleased -= this.OnMouseButtonReleased;
+            this.Window.MouseMoved -= this.OnMouseMoved;
+        }
+
+        public void EnableMouse()
+        {
+            this.Window.MouseButtonPressed += this.OnMouseButtonPressed;
+            this.Window.MouseButtonReleased += this.OnMouseButtonReleased;
         }
 
         public virtual void Draw(RenderTarget target, RenderStates states)

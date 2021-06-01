@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -8,11 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SFML.Net" Version="2.5.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="TGUI.Net.win-x64" Version="0.8.8.16" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="XCOPY &quot;$(SolutionDir)assets&quot; &quot;$(TargetDir)assets&quot; /S /I /Y" />
+    <Exec Command="XCOPY &quot;$(SolutionDir)assets&quot; &quot;$(TargetDir)assets&quot; /S /I /Y&#xD;&#xA;XCOPY &quot;$(SolutionDir)saves&quot; &quot;$(TargetDir)saves&quot; /S /I /Y" />
   </Target>
 
 </Project>

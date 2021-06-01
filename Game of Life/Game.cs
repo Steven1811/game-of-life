@@ -1,5 +1,9 @@
 ﻿using System;
 using System.Threading;
+using System.IO;
+using System.Collections.Generic;
+using Newtonsoft.Json;
+
 using SFML.Window;
 using SFML.Graphics;
 using SFML.System;
@@ -14,15 +18,19 @@ namespace Game_of_Life
         protected Grid grid;
         protected Text fpsText;
         protected Text gameCaptionText;
+        protected Gui gui;
+        protected float zoomFactor = 1.0f;
+        protected float mouseDeltaX = 0.0f;
+        protected float mouseDeltaY = 0.0f;
 
         // Main render thread
         protected void doRender()
         {
             this.window.SetActive(true);
 
-            this.gameCaptionText = new Text("Game of Life\nBy Steven & Lion", this.font, 48);
+            this.gameCaptionText = new Text("Game of Life", this.font, 48);
+            this.gameCaptionText.Position = new Vector2f(0f, 8f);
             this.gameCaptionText.FillColor = Color.Yellow;
-            // text.Position = new Vector2f(200f, 200f);
 
             this.fpsText = new Text("FPS: ", this.font, 48);
             this.AlignFpsText();
@@ -35,11 +43,12 @@ namespace Game_of_Life
             while (this.window.IsOpen)
             {
                 // Clear the window with an blue background as grid lines
-                this.window.Clear(Color.Blue);
+                this.window.Clear(new Color(0, 48, 63, 255));
 
                 // Draw calls, the less the better (; We probably need some shape/sprite batch processing here
                 this.window.Draw(this.grid);
                 this.window.Draw(this.gameCaptionText);
+                this.gui.Draw();
                 this.window.Draw(this.fpsText);
                 this.window.Display();
 
@@ -58,7 +67,7 @@ namespace Game_of_Life
         protected void AlignFpsText()
         {
             this.fpsText.Origin = new Vector2f(fpsText.GetGlobalBounds().Width, 0);
-            this.fpsText.Position = new Vector2f(this.window.Size.X, 0);
+            this.fpsText.Position = new Vector2f(this.window.Size.X, 8f);
         }
 
         // EventHandler for Window Closed Events
@@ -78,8 +87,9 @@ namespace Game_of_Life
             {
                 RenderWindow window = sender as RenderWindow;
                 FloatRect visibleArea = new FloatRect(0f, 0f, args.Width, args.Height);
-                window.SetView(new View(visibleArea));
-
+                View newView = new View(visibleArea);
+                newView.Zoom(this.zoomFactor);
+                window.SetView(newView);
                 this.AlignFpsText();
             }
         }
@@ -93,34 +103,129 @@ namespace Game_of_Life
             // Setup Window
             this.window = new RenderWindow(new VideoMode(800, 600), "Game of Life");
 
+            // Setup GUI
+            this.gui = new Gui(this.window);
+            this.gui.ControlEnabled += GuiControlEnabled;
+            this.gui.ControlDisabled += GuiControlDisabled;
+            this.gui.ViewReset += OnViewReset;
+            this.gui.GridClearClicked += OnGridClearClicked;
+
             // Setup grid
-            this.grid = new Grid(this.window, 12, 16);
+            this.grid = new Grid(this.window, 32, 32);
 
             // Set Window Events
             this.window.Closed += OnWindowClosed;
             this.window.Resized += OnWindowResized;
             this.window.KeyPressed += OnKeyPressed;
+            this.window.MouseWheelScrolled += OnMouseWheelScrolled;
+            this.window.MouseMoved += OnMouseMoved;
 
             // Set Window Config
             // this.window.SetFramerateLimit(60);
+            this.window.SetVerticalSyncEnabled(true);
             this.window.SetActive(false);
             
             // Setup rendering thread
             this.renderThread = new Thread(new ThreadStart(this.doRender));
         }
 
+        private void OnGridClearClicked(object sender, EventArgs e)
+        {
+            this.grid.Clear();
+        }
+
+        private void OnViewReset(object sender, EventArgs e)
+        {
+            this.zoomFactor = 1.0f;
+            FloatRect visibleArea = new FloatRect(0f, 0f, this.window.Size.X, this.window.Size.Y);
+            View newView = new View(visibleArea);
+            window.SetView(newView);
+            this.AlignFpsText();
+        }
+
+        private void OnMouseMoved(object sender, MouseMoveEventArgs e)
+        {
+            this.mouseDeltaX -= e.X;
+            this.mouseDeltaY -= e.Y;
+
+            if (Mouse.IsButtonPressed(Mouse.Button.Middle))
+            {
+                View oldView = this.window.GetView();
+                oldView.Move(new Vector2f(this.mouseDeltaX * this.zoomFactor, this.mouseDeltaY * this.zoomFactor));
+                this.window.SetView(oldView);
+            }
+            this.mouseDeltaX = e.X;
+            this.mouseDeltaY = e.Y;
+        }
+
+        private void OnMouseWheelScrolled(object sender, MouseWheelScrollEventArgs e)
+        {
+            View oldView = this.window.GetView();
+            if (e.Delta > 0)
+            {
+                oldView.Zoom(e.Delta * 0.8f);
+                this.zoomFactor *= e.Delta * 0.8f;
+            }
+            else
+            {
+                oldView.Zoom(e.Delta * -1.25f);
+                this.zoomFactor *= e.Delta * -1.25f;
+            }
+            this.window.SetView(oldView);
+        }
+
+        private void GuiControlDisabled(object sender, EventArgs e)
+        {
+            this.grid.DisableMouse();
+        }
+
+        private void GuiControlEnabled(object sender, EventArgs e)
+        {
+            this.grid.EnableMouse();
+        }
+
+        public void LoadGridFromFile(string filePath)
+        {
+            string serialized = File.ReadAllText(filePath);
+            Grid newGrid = new Grid(this.window);
+            JsonConvert.PopulateObject(serialized, newGrid);
+            newGrid.Rebuild();
+            this.grid = newGrid;
+            this.grid.CenterInWindow();
+        }
+
+        public void SaveGridToFile(string filePath)
+        {
+            string serialized = JsonConvert.SerializeObject(this.grid, Formatting.Indented);
+            File.WriteAllText(filePath, serialized);
+        }
+
         private void OnKeyPressed(object sender, KeyEventArgs args)
         {
-            if (args.Code == Keyboard.Key.F1)
+
+            switch(args.Code)
             {
-                this.grid.ColorMap[0] = Color.Yellow;
-                this.grid.ColorMap[1] = Color.Magenta;
-                this.grid.Rebuild();
-            }
-            else if (args.Code == Keyboard.Key.F2)
-            {
-                Console.WriteLine(this.grid.GetCell(-2, -2));
-                Console.WriteLine(this.grid.GetCell(17, 17));
+                case Keyboard.Key.F1:
+                    this.gui.ShowHelpMessageBox();
+                    break;
+                case Keyboard.Key.F2:
+                    Console.WriteLine(this.grid.GetCell(-2, -2));
+                    Console.WriteLine(this.grid.GetCell(17, 17));
+                    break;
+                case Keyboard.Key.F3:
+                    this.LoadGridFromFile("saves/save1.json");
+                    break;
+                case Keyboard.Key.F4:
+                    this.SaveGridToFile("saves/save1.json");
+                    break;
+                case Keyboard.Key.F12:
+                    Environment.Exit(0);
+                    break;
+                case Keyboard.Key.Left:
+                    View oldView = this.window.GetView();
+                    oldView.Move(new Vector2f(-10.0f * this.zoomFactor, 0.0f));
+                    this.window.SetView(oldView);
+                    break;
             }
         }
 
