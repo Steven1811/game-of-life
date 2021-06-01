@@ -46,7 +46,7 @@ namespace Game_of_Life
             this.Window.MouseButtonReleased += this.OnMouseButtonReleased;
             this.Window.Resized += this.OnWindowResized;
         }
-        public Grid(RenderWindow window, uint gridWidth, uint gridHeight, float cellWidth = 16f, float cellHeight = 16f, float lineWidth = 1f)
+        public Grid(RenderWindow window, uint gridWidth, uint gridHeight, float cellWidth = 16f, float cellHeight = 16f, float lineWidth = 2f)
         {
             // Set properties
             this.Window = window;
@@ -80,8 +80,6 @@ namespace Game_of_Life
             // Center in Window
             this.CenterInWindow();
         }
-
-        
 
         public void OnMouseButtonPressed(object sender, MouseButtonEventArgs args)
         {
@@ -206,6 +204,22 @@ namespace Game_of_Life
             }
         }
 
+        public void Clear()
+        {
+            // Create VertexArray
+            uint quadVerticesCount = this.GridWidth * this.GridHeight * 4;
+            this.vertices = new VertexArray(PrimitiveType.Quads, quadVerticesCount);
+
+            for (int x = 0; x < this.map.GetLength(0); x++)
+            {
+                for (int y = 0; y < this.map.GetLength(1); y++)
+                {
+                    this.map[x, y] = 0;
+                    this.SetCell(x, y, this.map[x, y]);
+                }
+            }
+        }
+
         public uint GetCell(int x, int y)
         {
             Vector2u realCoords = new Vector2u((uint)x, (uint)y);
@@ -223,6 +237,19 @@ namespace Game_of_Life
         {
             this.Origin = new Vector2f(this.GetGlobalBounds().Width / 2, this.GetGlobalBounds().Height / 2);
             this.Position = new Vector2f((this.Window.Size.X / 2), this.Window.Size.Y / 2);
+        }
+
+        public void DisableMouse()
+        {
+            this.Window.MouseButtonPressed -= this.OnMouseButtonPressed;
+            this.Window.MouseButtonReleased -= this.OnMouseButtonReleased;
+            this.Window.MouseMoved -= this.OnMouseMoved;
+        }
+
+        public void EnableMouse()
+        {
+            this.Window.MouseButtonPressed += this.OnMouseButtonPressed;
+            this.Window.MouseButtonReleased += this.OnMouseButtonReleased;
         }
 
         public virtual void Draw(RenderTarget target, RenderStates states)
